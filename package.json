@@ -1,0 +1,44 @@
+{
+  "name": "topcoder-github-skills-v2",
+  "version": "2.0.0",
+  "description": "Deep GitHub profile analyzer for Topcoder Skills verification with OAuth Device Flow",
+  "main": "dist/index.js",
+  "bin": {
+    "github-skills": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "audit": "npm audit --audit-level=moderate"
+  },
+  "keywords": [
+    "github",
+    "topcoder",
+    "skills",
+    "oauth",
+    "cli"
+  ],
+  "author": "sh0976",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "eslint": "^9.39.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@octokit/auth-oauth-device": "^8.0.3",
+    "@octokit/rest": "^22.0.1",
+    "axios": "^1.13.4",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.2",
+    "dotenv": "^17.2.3",
+    "openai": "^6.17.0",
+    "ora": "^9.1.0"
+  }
+}
