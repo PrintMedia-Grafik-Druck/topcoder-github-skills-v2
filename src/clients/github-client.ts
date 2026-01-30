@@ -30,7 +30,7 @@ export class GitHubClient {
       logger.success('User fetched');
       
       return response.data as GitHubUser;
-    } catch (err) {
+    } catch (err: unknown) {
       const error = err as Error;
       logger.error('Failed to fetch user', error);
       throw new Error('Failed: ' + error.message);
@@ -53,7 +53,7 @@ export class GitHubClient {
       logger.success('Fetched ' + response.data.length + ' repos');
       
       return response.data as Repository[];
-    } catch (err) {
+    } catch (err: unknown) {
       const error = err as Error;
       logger.error('Failed to fetch repos', error);
       throw error;
@@ -69,7 +69,7 @@ export class GitHubClient {
       this.rateLimiter.updateLimits(response.headers);
       
       return response.data as LanguageStats;
-    } catch (err) {
+    } catch (err: unknown) {
       logger.warn('Failed languages for ' + owner + '/' + repo);
       return {};
     }
@@ -91,7 +91,7 @@ export class GitHubClient {
       this.rateLimiter.updateLimits(response.headers);
       
       return response.data as Commit[];
-    } catch (err) {
+    } catch (err: unknown) {
       logger.warn('Failed commits for ' + repo);
       return [];
     }
@@ -123,7 +123,7 @@ export class GitHubClient {
         additions: 0,
         deletions: 0
       }));
-    } catch (err) {
+    } catch (err: unknown) {
       logger.warn('Failed PRs for ' + repo);
       return [];
     }

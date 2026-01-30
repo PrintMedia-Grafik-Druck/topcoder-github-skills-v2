@@ -26,30 +26,25 @@ program
     const startTime = Date.now();
     
     try {
-      logger.info('🚀 Starting GitHub Skills Analysis...\n');
+      logger.info('Starting GitHub Skills Analysis...');
 
-      // 1. Authenticate with OAuth Device Flow
       logger.info('Step 1: Authentication');
       const oauth = new GitHubOAuth();
       const token = await oauth.authenticate();
       
-      // 2. Initialize clients
-      logger.info('\nStep 2: Initializing clients');
+      logger.info('Step 2: Initializing clients');
       const githubClient = new GitHubClient(token);
       const topcoderClient = new TopcoderClient(config.topcoderApiUrl);
       
-      // 3. Get authenticated user
-      logger.info('\nStep 3: Fetching user profile');
+      logger.info('Step 3: Fetching user profile');
       const user = await githubClient.getAuthenticatedUser();
-      logger.success(`✅ Authenticated as: ${user.login}`);
+      logger.success(`Authenticated as: ${user.login}`);
       
-      // 4. Get user repositories
-      logger.info('\nStep 4: Fetching repositories');
+      logger.info('Step 4: Fetching repositories');
       const repos = await githubClient.getUserRepos(user.login);
-      logger.success(`✅ Found ${repos.length} repositories`);
+      logger.success(`Found ${repos.length} repositories`);
       
-      // 5. Analyze languages
-      logger.info('\nStep 5: Analyzing languages');
+      logger.info('Step 5: Analyzing languages');
       const languageStats = new Map<string, number>();
       
       for (const repo of repos) {
@@ -59,22 +54,19 @@ program
         }
       }
       
-      logger.success(`✅ Analyzed ${languageStats.size} languages`);
+      logger.success(`Analyzed ${languageStats.size} languages`);
       
-      // 6. Deep analysis: Commits
-      logger.info('\nStep 6: Analyzing commits (deep analysis)');
+      logger.info('Step 6: Analyzing commits (deep analysis)');
       const commitAnalyzer = new CommitAnalyzer(githubClient);
       const commitData = await commitAnalyzer.analyzeCommits(repos, user.login);
-      logger.success(`✅ Analyzed ${commitData.commitCount} commits`);
+      logger.success(`Analyzed ${commitData.commitCount} commits`);
       
-      // 7. Deep analysis: Pull Requests
-      logger.info('\nStep 7: Analyzing pull requests (deep analysis)');
+      logger.info('Step 7: Analyzing pull requests (deep analysis)');
       const prAnalyzer = new PRAnalyzer(githubClient);
       const prData = await prAnalyzer.analyzePullRequests(repos, user.login);
-      logger.success(`✅ Analyzed ${prData.prCount} pull requests`);
+      logger.success(`Analyzed ${prData.prCount} pull requests`);
       
-      // 8. Match skills
-      logger.info('\nStep 8: Matching Topcoder skills');
+      logger.info('Step 8: Matching Topcoder skills');
       const skillMatcher = new SkillMatcher(topcoderClient);
       const recommendations = await skillMatcher.matchSkills(
         languageStats,
@@ -83,45 +75,42 @@ program
         prData
       );
       
-      // 9. AI verification (optional)
       if (config.aiEnabled) {
-        logger.info('\nStep 9: AI skill verification');
+        logger.info('Step 9: AI skill verification');
         const aiVerifier = new AIVerifier(config.aiEnabled);
         await aiVerifier.verifySkills(recommendations);
       }
       
       const elapsedTime = Date.now() - startTime;
       
-      // Display results
-      console.log('\n' + '='.repeat(70));
-      console.log('📊 SKILL RECOMMENDATIONS');
-      console.log('='.repeat(70) + '\n');
+      process.stdout.write('\n' + '='.repeat(70) + '\n');
+      process.stdout.write('SKILL RECOMMENDATIONS\n');
+      process.stdout.write('='.repeat(70) + '\n\n');
       
       recommendations.forEach((rec, index) => {
-        console.log(`${index + 1}. ${rec.skillName} (ID: ${rec.skillId})`);
-        console.log(`   Confidence: ${rec.confidence}/100`);
-        console.log(`   Evidence: ${rec.evidence.length} sources`);
+        process.stdout.write(`${index + 1}. ${rec.skillName} (ID: ${rec.skillId})\n`);
+        process.stdout.write(`   Confidence: ${rec.confidence}/100\n`);
+        process.stdout.write(`   Evidence: ${rec.evidence.length} sources\n`);
         rec.evidence.slice(0, 3).forEach(ev => {
-          console.log(`   - ${ev.type}: ${ev.description}`);
+          process.stdout.write(`   - ${ev.type}: ${ev.description}\n`);
         });
-        console.log('');
+        process.stdout.write('\n');
       });
       
-      // Summary
-      console.log('='.repeat(70));
-      console.log('📈 ANALYSIS SUMMARY');
-      console.log('='.repeat(70));
-      console.log(`Repositories Scanned:     ${repos.length}`);
-      console.log(`Commits Analyzed:         ${commitData.commitCount}`);
-      console.log(`Pull Requests Analyzed:   ${prData.prCount}`);
-      console.log(`API Calls:                ${githubClient.getApiCallCount()}`);
-      console.log(`Rate Limit Remaining:     ${githubClient.getRateLimitRemaining()}`);
-      console.log(`Elapsed Time:             ${elapsedTime}ms`);
-      console.log(`Skills Recommended:       ${recommendations.length}`);
-      console.log('='.repeat(70) + '\n');
+      process.stdout.write('='.repeat(70) + '\n');
+      process.stdout.write('ANALYSIS SUMMARY\n');
+      process.stdout.write('='.repeat(70) + '\n');
+      process.stdout.write(`Repositories Scanned:     ${repos.length}\n`);
+      process.stdout.write(`Commits Analyzed:         ${commitData.commitCount}\n`);
+      process.stdout.write(`Pull Requests Analyzed:   ${prData.prCount}\n`);
+      process.stdout.write(`API Calls:                ${githubClient.getApiCallCount()}\n`);
+      process.stdout.write(`Rate Limit Remaining:     ${githubClient.getRateLimitRemaining()}\n`);
+      process.stdout.write(`Elapsed Time:             ${elapsedTime}ms\n`);
+      process.stdout.write(`Skills Recommended:       ${recommendations.length}\n`);
+      process.stdout.write('='.repeat(70) + '\n\n');
       
-    } catch (error) {
-      logger.error('❌ Analysis failed', error as Error);
+    } catch (error: unknown) {
+      logger.error('Analysis failed', error as Error);
       process.exit(1);
     }
   });

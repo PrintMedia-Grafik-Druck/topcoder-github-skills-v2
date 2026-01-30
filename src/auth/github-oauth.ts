@@ -1,5 +1,6 @@
 import { createOAuthDeviceAuth } from '@octokit/auth-oauth-device';
 import { createLogger } from '../utils/logger';
+import { config } from '../config/config';
 
 const logger = createLogger('GitHubOAuth');
 
@@ -7,7 +8,7 @@ export class GitHubOAuth {
   private clientId: string;
 
   constructor(clientId?: string) {
-    this.clientId = clientId || process.env.GITHUB_CLIENT_ID || 'Iv1.b507a08c87ecfe98';
+    this.clientId = clientId || config.githubClientId || 'Iv1.b507a08c87ecfe98';
   }
 
   async authenticate(): Promise<string> {
@@ -17,13 +18,10 @@ export class GitHubOAuth {
       clientType: 'oauth-app',
       clientId: this.clientId,
       onVerification: (verification) => {
-        console.log('\n' + '='.repeat(70));
-        console.log('🔑 GitHub Authentication Required');
-        console.log('='.repeat(70));
-        console.log(`\n1. Visit: ${verification.verification_uri}`);
-        console.log(`2. Enter code: ${verification.user_code}`);
-        console.log(`\n⏳ Waiting for authentication...`);
-        console.log('='.repeat(70) + '\n');
+        logger.info('GitHub Authentication Required');
+        logger.info(`Please visit: ${verification.verification_uri}`);
+        logger.info(`Enter code: ${verification.user_code}`);
+        logger.info('Waiting for authentication...');
       },
     });
 
@@ -31,10 +29,10 @@ export class GitHubOAuth {
       const { token } = await auth({ type: 'oauth' });
       logger.success('✅ Authentication successful!');
       return token;
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error('❌ OAuth Device Flow failed', error as Error);
       
-      const envToken = process.env.GITHUB_TOKEN;
+      const envToken = config.githubToken;
       if (envToken) {
         logger.warn('⚠️ Falling back to GITHUB_TOKEN from environment');
         return envToken;
