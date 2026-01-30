@@ -1,116 +1,62 @@
-import { TopcoderClient } from "../clients/topcoder-client.js";
-import { calculateConfidence } from "../utils/confidence.js";
-import type { CommitAnalysisResult } from "./commit-analyzer.js";
-import type { PRAnalysisResult } from "./pr-analyzer.js";
-import type { Evidence, SkillRecommendation } from "../types/analysis.types.js";
-import type { GitHubRepository } from "../types/github.types.js";
+import { TopcoderClient } from '../clients/topcoder-client';
+import { createLogger } from '../utils/logger';
+import { GitHubRepository } from '../types/github.types';
+import { SkillRecommendation, Evidence } from '../types/skill.types';
+import { calculateConfidence, ContributionMetrics } from '../utils/confidence';
 
-export interface AnalysisData {
-  username: string;
-  repositories: GitHubRepository[];
-  commitAnalysis: CommitAnalysisResult[];
-  prAnalysis: PRAnalysisResult[];
-}
-
-const LANGUAGE_MAPPINGS: Record<string, string> = {
-  JavaScript: "JavaScript",
-  TypeScript: "TypeScript",
-  Python: "Python",
-  Java: "Java",
-  Go: "Go",
-  Rust: "Rust",
-  "C++": "C++",
-  "C#": "C#",
-  Ruby: "Ruby",
-  PHP: "PHP",
-  Swift: "Swift",
-  Kotlin: "Kotlin",
-};
+const logger = createLogger('SkillMatcher');
 
 export class SkillMatcher {
-  constructor(_config: { logger: unknown }) {
-    // Config stored but not used in simplified version
+  private topcoderClient: TopcoderClient;
+
+  constructor(topcoderClient: TopcoderClient) {
+    this.topcoderClient = topcoderClient;
   }
 
-  async matchSkills(data: AnalysisData, client: TopcoderClient): Promise<SkillRecommendation[]> {
-    const stats = this.aggregateStats(data);
+  async matchSkills(
+    languageStats: Map<string, number>,
+    repos: GitHubRepository[],
+    commitData: { commitCount: number; codeVolume: number },
+    prData: { prCount: number; codeVolume: number }
+  ): Promise<SkillRecommendation[]> {
+    logger.info('Starting skill matching...');
+    const skills = await this.topcoderClient.getAllSkills();
     const recommendations: SkillRecommendation[] = [];
 
-    for (const [language, metrics] of Object.entries(stats)) {
-      const skillName = LANGUAGE_MAPPINGS[language] || language;
-      const skill = await client.findSkillByName(skillName);
+    for (const [language, bytes] of languageStats.entries()) {
+      const skill = skills.find(s => s.name.toLowerCase() === language.toLowerCase());
       
-      if (!skill) continue;
+      if (skill) {
+        const metrics: ContributionMetrics = {
+          commitCount: commitData.commitCount,
+          prCount: prData.prCount,
+          codeVolume: bytes,
+          repoCount: repos.filter(r => r.language === language).length,
+          daysSinceLastActivity: 0
+        };
 
-      const confidence = calculateConfidence({
-        commits: metrics.commits,
-        pullRequests: metrics.prCount,
-        codeVolume: metrics.codeVolume,
-        repositories: metrics.repoCount,
-      });
+        const confidence = calculateConfidence(metrics);
+        
+        const evidence: Evidence[] = repos
+          .filter(r => r.language === language)
+          .slice(0, 5)
+          .map(r => ({
+            type: 'repository' as const,
+            url: r.html_url,
+            description: r.name + ' (' + bytes + ' bytes)',
+            weight: 1
+          }));
 
-      const evidence = this.generateEvidence(language, data, metrics);
-
-      recommendations.push({
-        skill,
-        confidence,
-        evidence,
-        metrics: {
-          commits: metrics.commits,
-          pullRequests: metrics.prCount,
-          codeVolume: metrics.codeVolume,
-          repositories: metrics.repoCount,
-        },
-      });
-    }
-
-    return recommendations.sort((a, b) => b.confidence - a.confidence);
-  }
-
-  private aggregateStats(data: AnalysisData) {
-    const stats: Record<string, { commits: number; prCount: number; codeVolume: number; repoCount: number }> = {};
-    
-    for (const c of data.commitAnalysis) {
-      if (!stats[c.language]) stats[c.language] = { commits: 0, prCount: 0, codeVolume: 0, repoCount: 0 };
-      stats[c.language].commits += c.commits;
-      stats[c.language].codeVolume += c.codeVolume;
-    }
-    
-    for (const p of data.prAnalysis) {
-      if (!stats[p.language]) stats[p.language] = { commits: 0, prCount: 0, codeVolume: 0, repoCount: 0 };
-      stats[p.language].prCount += p.prCount;
-    }
-    
-    for (const repo of data.repositories) {
-      if (repo.language && stats[repo.language]) {
-        stats[repo.language].repoCount++;
+        recommendations.push({
+          skillId: skill.id,
+          skillName: skill.name,
+          confidence,
+          evidence
+        });
       }
     }
-    
-    return stats;
-  }
 
-  private generateEvidence(language: string, data: AnalysisData, metrics: any): Evidence[] {
-    const evidence: Evidence[] = [];
-    const repos = data.repositories.filter(r => r.language === language).slice(0, 5);
-    
-    for (const repo of repos) {
-      evidence.push({
-        type: "repository",
-        description: `Repository: ${repo.name}`,
-        url: repo.htmlUrl,
-        metrics: { stars: repo.stargazersCount, forks: repo.forksCount },
-      });
-    }
-    
-    if (metrics.commits > 0) {
-      evidence.push({
-        type: "commits",
-        description: `${metrics.commits} commits in ${language}`,
-        metrics: { count: metrics.commits },
-      });
-    }
-    
-    return evidence;
+    logger.success('Matched ' + recommendations.length + ' skills');
+    return recommendations.sort((a, b) => b.confidence - a.confidence);
   }
 }

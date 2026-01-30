@@ -1,62 +1,44 @@
 export interface GitHubUser {
   login: string;
   id: number;
-  name?: string;
-  email?: string;
-  bio?: string;
-  publicRepos: number;
-  followers: number;
-  following: number;
-  createdAt: string;
-  avatarUrl: string;
-  htmlUrl: string;
+  name: string;
+  email: string;
+  bio: string;
+  public_repos: number;
 }
 
-export interface GitHubRepository {
+export interface Repository {
   id: number;
   name: string;
-  fullName: string;
-  owner: string;
-  description?: string;
-  language?: string;
-  stargazersCount: number;
-  forksCount: number;
-  openIssuesCount: number;
-  createdAt: string | null;
-  updatedAt: string | null;
-  pushedAt?: string;
-  htmlUrl: string;
-  fork: boolean;
-  private: boolean;
+  full_name: string;
+  owner: { login: string };
+  html_url: string;
+  description: string;
+  language: string;
 }
 
-export interface GitHubCommit {
+export interface GitHubRepository extends Repository {}
+
+export interface Commit {
   sha: string;
-  message: string;
-  author: string;
-  authorEmail?: string;
-  date: string;
-  htmlUrl: string;
-  stats?: {
-    additions: number;
-    deletions: number;
-    total: number;
+  commit: {
+    author: { name: string; email: string; date: string };
+    message: string;
   };
+  html_url: string;
+  stats?: { additions: number; deletions: number };
 }
 
-export interface GitHubPullRequest {
+export interface PullRequest {
   id: number;
   number: number;
   title: string;
-  state: 'open' | 'closed';
-  author: string;
-  createdAt: string;
-  updatedAt: string;
-  mergedAt?: string;
-  htmlUrl: string;
+  html_url: string;
+  state: string;
   additions: number;
   deletions: number;
-  changedFiles: number;
+  changed_files?: number;
+  user?: { login: string };
 }
 
 export interface LanguageStats {

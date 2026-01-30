@@ -1,49 +1,42 @@
-export enum LogLevel {
-  DEBUG = 0,
-  INFO = 1,
-  WARN = 2,
-  ERROR = 3
-}
-
-export interface LoggerConfig {
-  level?: LogLevel;
+enum LogLevel {
+  INFO = 'INFO',
+  WARN = 'WARN',
+  ERROR = 'ERROR',
+  SUCCESS = 'SUCCESS',
+  PROGRESS = 'PROGRESS'
 }
 
 export class Logger {
-  private level: LogLevel;
+  private context: string;
 
-  constructor(config?: LoggerConfig) {
-    this.level = config?.level ?? LogLevel.INFO;
-  }
-
-  debug(message: string): void {
-    if (this.level <= LogLevel.DEBUG) {
-      process.stdout.write(`[DEBUG] ${message}\n`);
-    }
+  constructor(context: string) {
+    this.context = context;
   }
 
   info(message: string): void {
-    if (this.level <= LogLevel.INFO) {
-      process.stdout.write(`[INFO] ${message}\n`);
-    }
+    process.stdout.write(`[${LogLevel.INFO}] [${this.context}] ${message}\n`);
   }
 
   warn(message: string): void {
-    if (this.level <= LogLevel.WARN) {
-      process.stderr.write(`[WARN] ${message}\n`);
-    }
+    process.stderr.write(`[${LogLevel.WARN}] [${this.context}] ${message}\n`);
   }
 
   error(message: string, error?: Error): void {
-    if (this.level <= LogLevel.ERROR) {
-      process.stderr.write(`[ERROR] ${message}\n`);
-      if (error && error.stack) {
-        process.stderr.write(error.stack + '\n');
-      }
+    process.stderr.write(`[${LogLevel.ERROR}] [${this.context}] ${message}\n`);
+    if (error && error.stack) {
+      process.stderr.write(error.stack + '\n');
     }
+  }
+
+  success(message: string): void {
+    process.stdout.write(`[${LogLevel.SUCCESS}] [${this.context}] ${message}\n`);
+  }
+
+  progress(message: string): void {
+    process.stdout.write(`[${LogLevel.PROGRESS}] [${this.context}] ${message}\n`);
   }
 }
 
-export function createLogger(config?: LoggerConfig): Logger {
-  return new Logger(config);
+export function createLogger(context: string): Logger {
+  return new Logger(context);
 }

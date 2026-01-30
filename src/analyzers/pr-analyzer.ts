@@ -1,59 +1,34 @@
-import { GitHubClient } from "../clients/github-client.js";
+import { GitHubClient } from '../clients/github-client';
+import { createLogger } from '../utils/logger';
+import { Repository } from '../types/github.types';
 
-export interface PRAnalysisResult {
-  language: string;
-  prCount: number;
-  additions: number;
-  deletions: number;
-}
+const logger = createLogger('PRAnalyzer');
 
 export class PRAnalyzer {
-  private maxPRsPerRepo: number;
+  private githubClient: GitHubClient;
 
-  constructor(config: { maxPRsPerRepo?: number }) {
-    this.maxPRsPerRepo = config.maxPRsPerRepo || 50;
+  constructor(githubClient: GitHubClient) {
+    this.githubClient = githubClient;
   }
 
-  async analyzePullRequests(owner: string, repo: string, client: GitHubClient): Promise<PRAnalysisResult[]> {
-    const languages = await client.getLanguages(owner, repo);
-    const prs = await client.getPullRequests(owner, repo, this.maxPRsPerRepo);
-    
-    if (Object.keys(languages).length === 0 || prs.length === 0) return [];
-    
-    const total = Object.values(languages).reduce((sum, bytes) => sum + bytes, 0);
-    const results: PRAnalysisResult[] = [];
-    
-    for (const [language, bytes] of Object.entries(languages)) {
-      const ratio = bytes / total;
-      results.push({
-        language,
-        prCount: Math.round(prs.length * ratio) || 1,
-        additions: 0,
-        deletions: 0,
-      });
-    }
-    
-    return results.sort((a, b) => b.prCount - a.prCount);
-  }
+  async analyzePullRequests(repos: Repository[], username: string): Promise<{ prCount: number; codeVolume: number }> {
+    let totalPRs = 0;
+    let totalCodeVolume = 0;
 
-  aggregateResults(all: PRAnalysisResult[][]): PRAnalysisResult[] {
-    const map = new Map<string, { prCount: number; additions: number; deletions: number }>();
-    for (const results of all) {
-      for (const r of results) {
-        const existing = map.get(r.language);
-        if (existing) {
-          existing.prCount += r.prCount;
-          existing.additions += r.additions;
-          existing.deletions += r.deletions;
-        } else {
-          map.set(r.language, { prCount: r.prCount, additions: r.additions, deletions: r.deletions });
-        }
-      }
+    for (const repo of repos) {
+      const prs = await this.githubClient.getRepoPullRequests(repo.owner.login, repo.name, username);
+      totalPRs += prs.length;
+
+      const codeVolume = prs.reduce((sum: number, pr) => {
+        const additions = pr.additions || 0;
+        const deletions = pr.deletions || 0;
+        return sum + additions + deletions;
+      }, 0);
+
+      totalCodeVolume += codeVolume;
+      logger.info(`${repo.name}: ${prs.length} PRs, ${codeVolume} code changes`);
     }
-    const final: PRAnalysisResult[] = [];
-    for (const [language, stats] of map) {
-      final.push({ language, ...stats });
-    }
-    return final.sort((a, b) => b.prCount - a.prCount);
+
+    return { prCount: totalPRs, codeVolume: totalCodeVolume };
   }
 }
